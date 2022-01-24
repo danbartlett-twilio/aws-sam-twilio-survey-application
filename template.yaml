@@ -1,0 +1,674 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+Template for Interactive Serverless Applications using Twilio Voice and Messaging Channels ...and also handles multiple languages!
+  
+Globals:
+  Function:
+    Timeout: 5
+
+Resources:
+  ###############################
+  # S3 Bucket to handle persistance
+  ###############################
+  SrcBucket:
+    Type: AWS::S3::Bucket
+  # Managed IAM Policy to access S3 Bucket
+  SurveyS3ManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref SrcBucket
+                - /*     
+  ###############################
+  # Custom EventBus to Route Messages 
+  # based on user state
+  ###############################
+  SurveyEventBus:                
+    Type: AWS::Events::EventBus
+    Properties:       
+      Name: SurveyEventBus
+  # Managed IAM Policy to access EventBus
+  SurveyEventBusPutPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - events:PutEvents 
+            Resource: !GetAtt SurveyEventBus.Arn
+  ###############################
+  # LAMBDA LAYERS SHARED BY FUNCTIONS
+  ###############################
+  # Collection of reusable functions
+  SurveyUtilitiesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SurveyUtilitiesLayer
+      Description: Parses a property file into a JS object
+      ContentUri: layers/layer-utilities/
+      CompatibleRuntimes:
+        - nodejs12.x
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete
+  # Functions to GET & PUT from S3
+  SurveyS3ObjectLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SurveyS3ObjectLayer
+      Description: Pulls/puts a string from a S3 Object
+      ContentUri: layers/layer-s3-object/
+      CompatibleRuntimes:
+        - nodejs12.x
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete    
+  # Adds Twilio SDK to Lambda
+  SurveyTwilioLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SurveyTwilioLayer
+      Description: Twilio NodeJS libraries to call Twilio APIs
+      ContentUri: layers/layer-twilio/
+      CompatibleRuntimes:
+        - nodejs12.x
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete  
+  # Function to send Message via Twilio SDK
+  SurveySendTwilioSMSLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SurveySendTwilioSMSLayer
+      Description: Twilio NodeJS libraries to call Twilio APIs
+      ContentUri: layers/layer-send-sms/
+      CompatibleRuntimes:
+        - nodejs12.x
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete          
+  ###############################
+  # LAMBDA FUNCTIONS TO PROCESS SMS EVENTS
+  ###############################
+  # Called by POST, initiates SMS Survey
+  InitiateSMSFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/initiate-sms/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt InitiateSMSFunctionRole.Arn   
+      Events:
+        InitiateCallEvent:
+          Type: Api
+          Properties:
+            Path: /sms/initiate-sms
+            Method: post
+      Environment:  
+        Variables:
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'
+      Layers:
+        - !Ref 'SurveyUtilitiesLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  InitiateSMSFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyEventBusPutPolicy
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # Triggered by event, sends initial message and records response
+  SMSWelcomeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/welcome/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt SMSWelcomeFunctionRole.Arn 
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "welcome"
+                  - "welcome_wait"
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
+          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          S3_BUCKET: !Ref SrcBucket
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'
+      Layers:
+        - !Ref 'SurveyUtilitiesLayer'        
+        - !Ref 'SurveyS3ObjectLayer' 
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveySendTwilioSMSLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  SMSWelcomeFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - !Ref SurveyEventBusPutPolicy  
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # Triggered by event, sends kickoff message
+  SMSBeginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/begin/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt SMSBeginFunctionRole.Arn 
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "begin"
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
+          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          S3_BUCKET: !Ref SrcBucket
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'
+      Layers:
+        - !Ref 'SurveyUtilitiesLayer'        
+        - !Ref 'SurveyS3ObjectLayer' 
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveySendTwilioSMSLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  SMSBeginFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - !Ref SurveyEventBusPutPolicy  
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  # Triggered by event, sends questions, records answers, increments through question array
+  SMSQuestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/question/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt SMSQuestionFunctionRole.Arn 
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "question"
+                  - "question_wait"
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
+          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          S3_BUCKET: !Ref SrcBucket
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'
+      Layers:
+        - !Ref 'SurveyUtilitiesLayer'        
+        - !Ref 'SurveyS3ObjectLayer' 
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveySendTwilioSMSLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  SMSQuestionFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - !Ref SurveyEventBusPutPolicy  
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  SMSFinalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/final/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt SMSBeginFunctionRole.Arn 
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "final"
+                  - "post-survey"
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
+          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          S3_BUCKET: !Ref SrcBucket
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'          
+      Layers:
+        - !Ref 'SurveyUtilitiesLayer'        
+        - !Ref 'SurveyS3ObjectLayer' 
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveySendTwilioSMSLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  # Sends final thank you message
+  SMSFinalFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - !Ref SurveyEventBusPutPolicy
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole                                                 
+  #
+  # Handler for WEBHOOK from Twilio
+  # Key function receives hook from Twilio, pulls state json
+  # file from S3 and then puts an event to EventBridge for routing
+  #
+  TwilioSMSWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/twilio-handler/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt TwilioSMSWebhookFunctionRole.Arn      
+      Events:
+        InitiateCallEvent:
+          Type: Api
+          Properties:
+            Path: /sms/webhook
+            Method: post
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "initiate-sms"            
+      Environment:  
+        Variables:         
+          DEFAULT_AWS_REGION: 'us-west-2'          
+          DEFAULT_LANGUAGE: 'en-US'
+          S3_BUCKET: !Ref SrcBucket
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'
+      Layers:
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveyUtilitiesLayer'
+        - !Ref 'SurveyS3ObjectLayer'         
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+  TwilioSMSWebhookFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - !Ref SurveyEventBusPutPolicy  
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole                               
+  ###############################
+  # FUNCTIONS TO PROCESS VOICE CALLS
+  ###############################
+  # Called by POST, initiates Voice Survey
+  InitiateCallFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/voice/initiate-call/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        InitiateCallEvent:
+          Type: Api
+          Properties:
+            Path: /voice/initiate-call
+            Method: post
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+      Layers:
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveyUtilitiesLayer' 
+      Tags:          
+        TwilioApp: 'Survey-VOICE'
+  # Sends initial welcome message, provides language option
+  InitialMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/voice/initial-message/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        InitialMessageEvent:
+          Type: Api
+          Properties:
+            Path: /voice/initial-message
+            Method: get
+      Role: !GetAtt InitialMessageFunctionRole.Arn 
+      Layers:
+        - !Ref 'SurveyTwilioLayer' 
+        - !Ref 'SurveyS3ObjectLayer'
+        - !Ref 'SurveyUtilitiesLayer'
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref SrcBucket
+      Tags:          
+        TwilioApp: 'Survey-VOICE'  
+  InitialMessageFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref SurveyS3ManagedPolicy 
+  # Process Gather for switching language
+  SwitchLanguageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/voice/switch-language/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        SwitchLanguageEvent:
+          Type: Api
+          Properties:
+            Path: /voice/switch-language
+            Method: post
+      Layers:
+        - !Ref 'SurveyTwilioLayer' 
+        - !Ref 'SurveyUtilitiesLayer'        
+      Tags:          
+        TwilioApp: 'Survey-VOICE'
+  # Kick off the questions
+  BeginSurveyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/voice/begin-survey/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        BeginSurveyEvent:
+          Type: Api
+          Properties:
+            Path: /voice/begin-survey
+            Method: get
+      Role: !GetAtt BeginSurveyFunctionRole.Arn 
+      Layers:
+        - !Ref 'SurveyTwilioLayer' 
+        - !Ref 'SurveyS3ObjectLayer'
+        - !Ref 'SurveyUtilitiesLayer'
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref SrcBucket
+      Tags:          
+        TwilioApp: 'Survey-VOICE'  
+  BeginSurveyFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref SurveyS3ManagedPolicy
+  # Asks questions, records answers, cycle through question array
+  QuestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/voice/question/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        QuestionEvent:
+          Type: Api
+          Properties:
+            Path: /voice/question
+            Method: post
+      Role: !GetAtt QuestionFunctionRole.Arn 
+      Layers:
+        - !Ref 'SurveyTwilioLayer' 
+        - !Ref 'SurveyS3ObjectLayer'
+        - !Ref 'SurveyUtilitiesLayer'
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref SrcBucket
+          DEFAULT_AWS_REGION: 'us-west-2'
+          EVENTBUS_NAME: !Ref SurveyEventBus
+          EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
+          EVENT_DETAIL_TYPE: 'surveystate'            
+      Tags:          
+        TwilioApp: 'Survey-VOICE'  
+  QuestionFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref SurveyEventBusPutPolicy
+        - !Ref SurveyS3ManagedPolicy
+  ###############################
+  # PostSurveyFunction => Used
+  # by both VOICE and MESSAGING
+  # after survey is completed to
+  # show simple process. This could
+  # be summarizing results, notifying
+  # based on feedback or anything else.
+  ###############################
+  PostSurveyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/sms/post-survey/
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Role: !GetAtt PostSurveyFunctionRole.Arn 
+      Events:
+        Trigger:
+          Type: CloudWatchEvent 
+          Properties:
+            EventBusName: !Ref SurveyEventBus
+            Pattern:
+              source:
+                - custom.twilioSurveyApp
+              detail-type:
+                - surveystate                      
+              detail:
+                currentState:
+                  - "post-survey"
+      Environment:  
+        Variables:
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
+          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
+          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          DEFAULT_AWS_REGION: 'us-west-2'                    
+          S3_BUCKET: !Ref SrcBucket
+      Layers:   
+        - !Ref 'SurveyS3ObjectLayer' 
+        - !Ref 'SurveyTwilioLayer'
+        - !Ref 'SurveySendTwilioSMSLayer'
+      Tags:          
+        TwilioApp: 'Survey-SMS'
+        TwilioApp: 'Survey-VOICE'
+  PostSurveyFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole    
+      ManagedPolicyArns:        
+        - !Ref SurveyS3ManagedPolicy
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole                         
+###############################
+# These values are displayed
+# after deployment and in 
+# cloudformation stacks and are 
+# used to initiate flows and access
+# data and configurations
+###############################
+Outputs:
+  InitiateSurveyVoiceApi:
+    Description: "API Gateway POST endpoint URL to initiate VOICE Survey"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/voice/initiate-call"
+  InitiateSurveySMSApi:
+    Description: "API Gateway POST endpoint URL to initiate SMS Survey"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sms/initiate-sms"
+  TwilioMessagingWebhook:
+    Description: "URL to be configured in Twilio to handle incomming Messages"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sms/initiate-sms"
+  SrcBucket:
+    Description: "S3 Bucket to keep configurations and save data and state."
+    Value: !Ref SrcBucket

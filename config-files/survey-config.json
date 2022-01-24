@@ -1,0 +1,8 @@
+{
+    "questions": [
+        {"questionName":"questionServiceRate","questionType":"dtmf"},
+        {"questionName":"questionProduct","questionType":"speech"},
+        {"questionName":"questionAgentRate","questionType":"dtmf"},
+        {"questionName":"questionFeedback","questionType":"speech"}
+    ]
+}
