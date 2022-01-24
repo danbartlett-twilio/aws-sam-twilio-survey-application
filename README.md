@@ -8,6 +8,7 @@ This blog will walk you through deploying a serverless application in AWS and pr
 
 ## Let's start with the architecture diagram...
 
+![Template for Interactive Serverless Applications using Twilio Voice and Messaging Channels](https://user-images.githubusercontent.com/78064764/150879699-eff87bba-2d8c-4a9c-8727-811783194149.png)
 
 Going left to right, the end users will interact with either a voice call or a sms conversation. The Twilio container features our Messaging and Programmable Voice APIs. The AWS layer contains the bulk of the functionality for this application. Last, the enterprise can initiate these interactions from their internal systems.
 
@@ -82,6 +83,8 @@ Find your TWILIO_ACCOUNT_SID and TWILIO_AUTHTOKEN from the Account Info card on 
 
 For TWILIO_PHONE_NUMBER and the TWILIO_MESSAGE_SERVICE, use the phone number that you bought in step 1.
 
+![Screen Shot 2022-01-24 at 9 52 40 AM](https://user-images.githubusercontent.com/78064764/150879919-5ebdc9cf-1c8e-4aba-b10c-6b4c2da4df9b.png)
+
 ## 3. Download code
 
 Download the code from this repo.
@@ -108,6 +111,8 @@ $ sam deploy --guided
 
 ...which will start an interactive command prompt session to set basic configurations and then deploy all of your resources via a stack in CloudFormation. Here are the answers to enter after running that command except substitute your AWS Region of choice!
 
+<img width="925" alt="sam-deploy-guided" src="https://user-images.githubusercontent.com/78064764/150880888-b67f6f0f-8b13-4bfe-a3b5-7cce82e15e21.png">
+
 Once that finishes, go to your AWS Console and then CloudFormation and you can browse through the new stack you just created. All of the Lambdas, Lambda Layers, S3 buckets, Custom EventBus, IAM Roles, and API Gateways are all created automatically. IAAC is awesome!
 
 Also note that the first time you run the deploy command, SAM will create a samconfig.toml file to save your answers for subsequent deployments. After you deploy the first time, you can drop the "--guided" parameter for future deploymenets.
@@ -131,6 +136,10 @@ The ```sam deploy``` command created the S3 bucket. Now you just need to take a 
 3. Upload the two .env files from config-files/voice-prompts to the voice-prompts folder
 4. Create a folder in the S3 bucket called "survey-results/"
 
+Here is what your S3 bucket should look like:
+
+![Screen Shot 2022-01-21 at 2 22 33 PM](https://user-images.githubusercontent.com/78064764/150879991-e94cf391-5d5d-4a69-bd34-358b0d2e453f.png)
+
 ## 6. Set webhook url for Messaging
 
 We talked a little already about the nature of voice calls versus messaging conversations. Since voice is synchronous, Twilio Programmable Voice keeps the call alive. For messaging, Twilio will handle incoming messages by forwarding those messages to a webhook. The application needs to maintain state and respond to incoming messages dynamically.
@@ -149,18 +158,25 @@ Both the voice and the messaging flows are initiated from post requests.
 
 We can start with a voice call. Use the InitiateSurveyVoiceApi value from the CloudFormation Output tabs. You will also pass in values for **To** (survey recipient) and **defaultLanguage**. Here is a screenshot from POSTMAN for a voice call:
 
+<img width="1140" alt="Voice-POSTMAN" src="https://user-images.githubusercontent.com/78064764/150879803-cad350f8-dce2-4363-ab66-b8a3e39cbe49.png">
+
 That post request should initiate a voice survey. Once you finish the survey you can go to the survey-results folder in the S3 bucket and review the json file to see the results. Before you try out the SMS flow, delete the json file if you plan to use the same TO phone number.
 
 Here is a screenshot from POSTMAN to initiate an SMS survey:
 
+<img width="1146" alt="SMS-POSTMAN" src="https://user-images.githubusercontent.com/78064764/150879774-9454a19a-032d-4ecb-a260-b9fc13dff6d1.png">
 
 You can delete the json file in the survey-results folder of the S3 buckets to try different paths (different languages, different answers, etc.)
 
 If you want to change the questions, edit the survey-config.json file to add or remove questions. Then change the corresponding language specific questions in the voice-prompts folder. Add a new language by adding a new env file in that folder. Here are the [Twilio Supported Languages](https://support.twilio.com/hc/en-us/articles/223132827-What-Languages-can-the-Say-TwiML-Verb-Speak-).
 
+### Not a production solution!
+
+While you can get this system working pretty quickly, it is NOT production ready. The support user journeys are largely the "happy paths" so additional error and execption handling are needed. In addition, the APIs into AWS are NOT secured. You would need to secure the APIs for a production system. 
+
 ## Summary
 
-While this application builds a multilingual survey over voice and messaging channels, you can use this template to build any other interactive application.
+Use this application template to start building a custom multilingual survey over voice and messaging channels or any other interactive application that needs to leverage Twilio and AWS!
 
 ## Cleanup
 
