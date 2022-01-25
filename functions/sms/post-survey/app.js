@@ -16,19 +16,27 @@ exports.lambdaHandler = async (event, context) => {
     // We are just going to send the json answers
     // back in a text message
 
-    let message = `******
+
+    // Only send this immediately after survey has 
+    // been completed!
+    let now = Date.now();
+    if ((now - event.detail.resultsObject.surveyCompleted) < 180) {      
+
+        let message = `******
 Here are your answers! This message shows that you can run processing after a survey completes.
 ${JSON.stringify(resultsObject, null, 4)}
 ******`;    
 
-    // SEND SMS MESSAGE
-    let smsObj = {
-        body: message,
-        to: event.detail.postBody.From,
-        from: defaultFromNumber
-    };
+        // SEND SMS MESSAGE
+        let smsObj = {
+            body: message,
+            to: event.detail.postBody.From,
+            from: defaultFromNumber
+        };
 
-    await twilioSMS.sendTwilioSMS(smsObj);            
-    console.log("Twilio SMS Sent...");
+        await twilioSMS.sendTwilioSMS(smsObj);            
+        console.log("Twilio SMS Sent...");
+            
+    }
 
 };

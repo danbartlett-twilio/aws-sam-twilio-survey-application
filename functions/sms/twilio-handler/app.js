@@ -1,5 +1,6 @@
 const s3Functions = require('/opt/s3-object-functions.js');
 const surveyUtilities = require('/opt/utilities.js');
+const twilioSecurity = require('/opt/validate-twilio-header.js');
 const AWS = require('aws-sdk');
 AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
@@ -25,6 +26,10 @@ exports.lambdaHandler = async (event, context) => {
         // Parse the post body parameters
         bodyParams = await surveyUtilities.parsePostBody(event.body);    
         surveyTo = bodyParams.From.substring(1); // REMOVE + to facilitate passing as querystring param
+
+        // CHECK X-Twilio-Signature
+        let securityCheck = await twilioSecurity.validateTwilioXHeader(event,bodyParams);
+        console.log("Security Check on X-Twilio-Signature => ", securityCheck);
     }
 
     // FETCH OR CREATE SURVEY RESULTS RECORD
@@ -62,8 +67,8 @@ exports.lambdaHandler = async (event, context) => {
     let messageBody = bodyParams.Body ? bodyParams.Body.replace(/\+/g, " ").trim() : "";
     let eventParams = surveyUtilities.formatEventBridgeObject(resultsObject,bodyParams,messageBody);
     console.log("eventParams ==> ", eventParams);            
-    const result = await eventbridge.putEvents(eventParams).promise()
     
+    const result = await eventbridge.putEvents(eventParams).promise()    
     console.log("result of eventbridge put ==> ", result);
 
     return response;

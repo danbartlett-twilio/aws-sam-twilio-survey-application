@@ -1,7 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: >
-Template for Interactive Serverless Applications using Twilio Voice and Messaging Channels ...and also handles multiple languages!
+Description: Template for Interactive Serverless Applications using Twilio Voice and Messaging Channels ...and also handles multiple languages!
   
 Globals:
   Function:
@@ -94,7 +93,18 @@ Resources:
       CompatibleRuntimes:
         - nodejs12.x
       LicenseInfo: 'MIT'
-      RetentionPolicy: Delete          
+      RetentionPolicy: Delete  
+  # Function to send Message via Twilio SDK
+  SurveyValidateTwilioHeaderLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SurveyValidateTwilioHeaderLayer
+      Description: Twilio NodeJS libraries to call Twilio APIs
+      ContentUri: layers/layer-validate-twilio-header/
+      CompatibleRuntimes:
+        - nodejs12.x
+      LicenseInfo: 'MIT'
+      RetentionPolicy: Delete                
   ###############################
   # LAMBDA FUNCTIONS TO PROCESS SMS EVENTS
   ###############################
@@ -401,6 +411,9 @@ Resources:
                   - "initiate-sms"            
       Environment:  
         Variables:         
+          # VARIABLES PULLED FROM PARAMETER STORE
+          TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'           
           DEFAULT_AWS_REGION: 'us-west-2'          
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
@@ -410,6 +423,7 @@ Resources:
       Layers:
         - !Ref 'SurveyTwilioLayer'
         - !Ref 'SurveyUtilitiesLayer'
+        - !Ref 'SurveyValidateTwilioHeaderLayer'
         - !Ref 'SurveyS3ObjectLayer'         
       Tags:          
         TwilioApp: 'Survey-SMS'
