@@ -184,7 +184,11 @@ If you want to change the questions, edit the survey-config.json file to add or 
 
 ### Not a production solution!
 
-While you can get this system working pretty quickly, it is NOT production ready. The supported user journeys are largely the "happy paths" so additional error and exception handling are needed. In addition, the APIs into AWS are NOT secured. You would need to secure the APIs for a production system. 
+While you can get this system working pretty quickly, it is NOT production ready. The supported user journeys are largely the "happy paths" so additional error and exception handling are needed. 
+
+The webhook for SMS is secured by validating that the requests are coming from Twilio. This uses validaton on the [X-Twilio-Signature header](https://www.twilio.com/docs/usage/security#validating-requests). This is not covered in this blog, but it is a good practice to put this security check in place. To see this check in action, review the lambda layer called lambda-validate-twilio-header and the twilio-handler function where it is called.
+
+The initiate APIs are not into AWS are NOT secured. You would need to secure the APIs for a production system and in general be sure that this configuration meets your organization's security requirements. 
 
 ## Summary
 
