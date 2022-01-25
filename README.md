@@ -182,13 +182,31 @@ You can delete the json file in the survey-results folder of the S3 buckets to t
 
 If you want to change the questions, edit the survey-config.json file to add or remove questions. Then change the corresponding language specific questions in the voice-prompts folder. Add a new language by adding a new env file in that folder. Here are the [Twilio Supported Languages](https://support.twilio.com/hc/en-us/articles/223132827-What-Languages-can-the-Say-TwiML-Verb-Speak-).
 
+## Developing and Debugging
+
+Building applications with AWS SAM takes a little practice but it can be very efficient. In addition, writing code in an IaC paradigm means that you end up with solutions that are easily deployed. 
+
+To create a new lambda function, copy one of the folders in the functions folder and then customize. In the template.yaml file, copy and paste resource and role definititions for a similar function and then customize. Run ```sam build``` and  ```sam deploy``` to deploy your changes to the cloud.
+
+Editing existing lambdas, or other resources defined in the template.yaml file is easy as well. Make your changes and then run  ```sam build``` and  ```sam deploy```.
+
+AWS SAM also provides the ability to test locally. [More details on developing with AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
+
+For degugging lambda functions, go to the AWS Console and then select a lambda. Click on the **Monitor** tab and then the **View logs in CloudWatch** button as shown here:
+
+![lambda-monitor](https://user-images.githubusercontent.com/78064764/151016931-c9f71124-787c-44c3-94ce-db90316c4706.png)
+
+...this will give you access to logs from all executions of this function. Note that runtime data and console.log's will show up in the logs to help you build and debug!
+
+![LogShot](https://user-images.githubusercontent.com/78064764/151017271-d37e24ed-86f0-4000-9dda-541eb79d5abd.png)
+
 ### Not a production solution!
 
 While you can get this system working pretty quickly, it is NOT production ready. The supported user journeys are largely the "happy paths" so additional error and exception handling are needed. 
 
-The webhook for SMS is secured by validating that the requests are coming from Twilio. This uses validaton on the [X-Twilio-Signature header](https://www.twilio.com/docs/usage/security#validating-requests). This is not covered in this blog, but it is a good practice to put this security check in place. To see this check in action, review the lambda layer called lambda-validate-twilio-header and the twilio-handler function where it is called.
+The webhook for SMS is secured by validating that the requests are coming from Twilio. This uses validaton on the [X-Twilio-Signature header](https://www.twilio.com/docs/usage/security#validating-requests). This is not covered in this blog, but it is a good practice to put this security check in place. To see this check in action, review the lambda layer called **lambda-validate-twilio-header** and the **sms/twilio-handler** function where it is called. 
 
-The initiate APIs are not into AWS are NOT secured. You would need to secure the APIs for a production system and in general be sure that this configuration meets your organization's security requirements. 
+The API to initiate the sms and voice flows (/sms/initiate-sms and /voice/initiate-call) APIs are not NOT secured. You would need to secure those APIs for a production system and in general be sure that your project's configuration meets your organization's security requirements. 
 
 ## Summary
 
