@@ -36,9 +36,9 @@ Take a moment and go through the commented **template.yaml** file to review the 
 
 Before we begin, I want to point out that [Twilio Studio](https://www.twilio.com/studio) is one of my favorite Twilio products. Twilio Studio allows you to visually build interactive workflows on multiple Twilio channels. If you have not researched Twilio Studio ( [Studio Docs](https://www.twilio.com/docs/studio) ), I encourage you to do so!
 
-This template offers some similar capabilities to Stuido, but in an all code environment. This template could be an alternative solution that allows you to build channel interactivity from within your AWS account. This flexibility could unclock additional capabilities and meet additional requirements. 
+This template offers some similar capabilities to Studio, but in an all code environment. This template could be an alternative solution that allows you to build channel interactivity from within your AWS account. This flexibility could unlock additional capabilities and meet additional requirements. 
 
-In addition, this template could be used in conjuction with Twilio Studio or other Twilio products where you need to generate TwiML or make API calls. Building this functionality in the cloud AND using serverless technowlogies has many benefits!
+In addition, this template could be used in conjunction with Twilio Studio or other Twilio products where you need to generate TwiML or make API calls. Building this functionality in the cloud AND using serverless technologies has many benefits!
 
 ### Prerequisites
 
@@ -91,7 +91,7 @@ Download the code from this repo.
 
 Several of the lambda functions need to access the Twilio node SDK. For reuse, the sdk is put into a "layer" that can be added to all of the lambdas that need it. 
 
-The Twilio SDK code is not included in the repo so from a commmand line, go to /layers/layer-twilo and then run 
+The Twilio SDK code is not included in the repo so from a command line, go to /layers/layer-twilo and then run 
 
 ```bash
 $ npm install 
@@ -123,7 +123,7 @@ $ sam deploy --guided
 
 Once that finishes, go to your AWS Console and then CloudFormation and you can browse through the new stack you just created. All of the Lambdas, Lambda Layers, S3 buckets, Custom EventBus, IAM Roles, and API Gateways are all created automatically. IaC is awesome!
 
-Also note that the first time you run the deploy command, SAM will create a samconfig.toml file to save your answers for subsequent deployments. After you deploy the first time, you can drop the "--guided" parameter for future deploymenets.
+Also note that the first time you run the deploy command, SAM will create a samconfig.toml file to save your answers for subsequent deployments. After you deploy the first time, you can drop the "--guided" parameter for future deployments.
 
 Go to the OUTPUT tab of the deployed stack in CloudFormation. Keep that tab open as you will need those values in later steps (InitiateSurveySMSApi, InitiateSurveyVoiceApi, SrcBucket, TwilioMessagingWebhook).
 
