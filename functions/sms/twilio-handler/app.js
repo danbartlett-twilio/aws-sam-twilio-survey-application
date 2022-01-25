@@ -30,6 +30,9 @@ exports.lambdaHandler = async (event, context) => {
         // CHECK X-Twilio-Signature
         let securityCheck = await twilioSecurity.validateTwilioXHeader(event,bodyParams);
         console.log("Security Check on X-Twilio-Signature => ", securityCheck);
+
+        // IF THIS CHECK FAILS, THEN STOP PROCESSING AND SEND ALERTS / LOGS!
+
     }
 
     // FETCH OR CREATE SURVEY RESULTS RECORD
