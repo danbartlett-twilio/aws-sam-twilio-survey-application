@@ -210,7 +210,13 @@ The API to initiate the sms and voice flows (/sms/initiate-sms and /voice/initia
 
 ## Summary
 
-Use this application template to start building a custom multilingual survey over voice and messaging channels or any other interactive application that needs to leverage Twilio and AWS!
+In short order you just created an interactive multilingual serverless application that supports both voice and messaging channels. Impressive!
+ 
+Next up – you could take this template and build a production ready survey application.
+ 
+Or… if your use case is not a survey use this template, or the patterns in this template, to build your custom applications.
+ 
+Lastly, because of the benefits of serverless computing (speed, cost, agility), this template could be a terrific way to build a POC for projects of any size.
 
 ## Cleanup
 
