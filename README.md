@@ -91,10 +91,12 @@ Download the code from this repo.
 
 Several of the lambda functions need to access the Twilio node SDK. For reuse, the sdk is put into a "layer" that can be added to all of the lambdas that need it. 
 
-The Twilio SDK code is not included in the repo so from a command line, go to /layers/layer-twilo and then run 
+The Twilio SDK code is not included in the repo so from a command line, go to /layers/ and then run 
 
 ```bash
-$ npm install 
+$ mkdir layer-twilio; cd layer-twilio
+$ mkdir nodejs; cd nodejs
+$ npm install twilio
 ```
 
 ...to pull down everything you need into the node_modules. 
