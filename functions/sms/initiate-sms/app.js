@@ -1,6 +1,5 @@
 const surveyUtilities = require('/opt/utilities.js');
 const AWS = require('aws-sdk');
-AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
 
 exports.lambdaHandler = async (event, context) => {

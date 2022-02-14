@@ -3,7 +3,6 @@ const s3Functions = require('/opt/s3-object-functions.js');
 const surveyUtilities = require('/opt/utilities.js');
 const twilioSMS = require('/opt/send-sms.js');
 const AWS = require('aws-sdk');
-AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
 
 exports.lambdaHandler = async (event, context) => {

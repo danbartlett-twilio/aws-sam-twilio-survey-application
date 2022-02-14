@@ -2,7 +2,6 @@ const s3Functions = require('/opt/s3-object-functions.js');
 const surveyUtilities = require('/opt/utilities.js');
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
 const AWS = require('aws-sdk');
-AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
 
 exports.lambdaHandler = async (event, context) => {
@@ -87,7 +86,7 @@ exports.lambdaHandler = async (event, context) => {
             vr.hangup();
             
             // POST EVENT TO EVENTBRIDGE
-            let finalUserObject = { currentState: 'post-survey', surveyTo: event.queryStringParameters.surveyTo };
+            let finalUserObject = { currentState: 'post-survey-results', surveyTo: event.queryStringParameters.surveyTo };
             let postBody = { From: '+'+event.queryStringParameters.surveyTo };
             let eventParams = surveyUtilities.formatEventBridgeObject(finalUserObject,postBody);            
             await eventbridge.putEvents(eventParams).promise();

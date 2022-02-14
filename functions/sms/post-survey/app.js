@@ -1,4 +1,4 @@
-const defaultFromNumber = process.env.TWILIO_SMS_SENDER;
+const defaultFromNumber = process.env.TWILIO_MESSAGING_SENDER;
 const s3Functions = require('/opt/s3-object-functions.js');
 const twilioSMS = require('/opt/send-sms.js');
 
@@ -20,7 +20,7 @@ exports.lambdaHandler = async (event, context) => {
     // Only send this immediately after survey has 
     // been completed!
     let now = Date.now();
-    if ((now - event.detail.resultsObject.surveyCompleted) < 180) {      
+    if ((now - resultsObject.surveyCompleted) < 60000) {      
 
         let message = `******
 Here are your answers! This message shows that you can run processing after a survey completes.

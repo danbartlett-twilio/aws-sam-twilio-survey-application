@@ -1,9 +1,8 @@
-const defaultFromNumber = process.env.TWILIO_SMS_SENDER;
+const defaultFromNumber = process.env.TWILIO_MESSAGING_SENDER;
 const s3Functions = require('/opt/s3-object-functions.js');
 const surveyUtilities = require('/opt/utilities.js');
 const twilioSMS = require('/opt/send-sms.js');
 const AWS = require('aws-sdk');
-AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
 
 exports.lambdaHandler = async (event, context) => {
@@ -33,10 +32,15 @@ exports.lambdaHandler = async (event, context) => {
             let surveyResultsFileName = `survey-results/${event.detail.resultsObject.surveyTo}.json`;
             
             let finalUserObject = event.detail.resultsObject;
-            finalUserObject.currentState = 'post-survey'
-
+            
+            finalUserObject.currentState = 'post-survey';
+            
             // SAVE TO S3
             await s3Functions.putJsonObjectIntoS3(process.env.S3_BUCKET,surveyResultsFileName,finalUserObject);                
+
+            // EDIT THE OBJECT (unsaved) SENT TO EVENTBRIDGE
+            // TO TRIGGER POST PROCESSING
+            finalUserObject.currentState = 'post-survey-results'; 
 
             // ADD EVENT TO EVENTBUS
             let eventParams = surveyUtilities.formatEventBridgeObject(finalUserObject,event.detail.postBody);            

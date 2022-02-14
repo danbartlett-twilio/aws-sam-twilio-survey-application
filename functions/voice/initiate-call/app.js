@@ -1,6 +1,6 @@
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const defaultFromNumber = process.env.TWILIO_PHONE_NUMBER;
+const defaultFromNumber = process.env.TWILIO_VOICE_NUMBER;
 const surveyUtilities = require('/opt/utilities.js');
 const client = require('twilio')(accountSid, authToken);
 

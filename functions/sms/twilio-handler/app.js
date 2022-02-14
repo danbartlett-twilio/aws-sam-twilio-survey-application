@@ -2,7 +2,6 @@ const s3Functions = require('/opt/s3-object-functions.js');
 const surveyUtilities = require('/opt/utilities.js');
 const twilioSecurity = require('/opt/validate-twilio-header.js');
 const AWS = require('aws-sdk');
-AWS.config.region = process.env.DEFAULT_AWS_REGION || 'us-east-1';
 const eventbridge = new AWS.EventBridge();
 
 exports.lambdaHandler = async (event, context) => {
@@ -71,7 +70,7 @@ exports.lambdaHandler = async (event, context) => {
     let eventParams = surveyUtilities.formatEventBridgeObject(resultsObject,bodyParams,messageBody);
     console.log("eventParams ==> ", eventParams);            
     
-    const result = await eventbridge.putEvents(eventParams).promise()    
+    const result = await eventbridge.putEvents(eventParams).promise();    
     console.log("result of eventbridge put ==> ", result);
 
     return response;

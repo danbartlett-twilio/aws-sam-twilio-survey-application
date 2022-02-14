@@ -123,8 +123,7 @@ Resources:
             Path: /sms/initiate-sms
             Method: post
       Environment:  
-        Variables:
-          DEFAULT_AWS_REGION: 'us-west-2'          
+        Variables:         
           DEFAULT_LANGUAGE: 'en-US'
           EVENTBUS_NAME: !Ref SurveyEventBus
           EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
@@ -175,9 +174,8 @@ Resources:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
-          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
-          DEFAULT_AWS_REGION: 'us-west-2'          
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'                 
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
           EVENTBUS_NAME: !Ref SurveyEventBus
@@ -232,9 +230,8 @@ Resources:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
-          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
-          DEFAULT_AWS_REGION: 'us-west-2'          
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'                                 
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
           EVENTBUS_NAME: !Ref SurveyEventBus
@@ -290,9 +287,8 @@ Resources:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
-          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
-          DEFAULT_AWS_REGION: 'us-west-2'          
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'                                  
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
           EVENTBUS_NAME: !Ref SurveyEventBus
@@ -347,9 +343,8 @@ Resources:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
-          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
-          DEFAULT_AWS_REGION: 'us-west-2'          
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'                              
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
           EVENTBUS_NAME: !Ref SurveyEventBus
@@ -413,8 +408,7 @@ Resources:
         Variables:         
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
-          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'           
-          DEFAULT_AWS_REGION: 'us-west-2'          
+          TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'                     
           DEFAULT_LANGUAGE: 'en-US'
           S3_BUCKET: !Ref SrcBucket
           EVENTBUS_NAME: !Ref SurveyEventBus
@@ -464,7 +458,8 @@ Resources:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'        
       Layers:
         - !Ref 'SurveyTwilioLayer'
         - !Ref 'SurveyUtilitiesLayer' 
@@ -585,7 +580,6 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref SrcBucket
-          DEFAULT_AWS_REGION: 'us-west-2'
           EVENTBUS_NAME: !Ref SurveyEventBus
           EVENT_SOURCE_NAME: 'custom.twilioSurveyApp'
           EVENT_DETAIL_TYPE: 'surveystate'            
@@ -634,15 +628,14 @@ Resources:
                 - surveystate                      
               detail:
                 currentState:
-                  - "post-survey"
+                  - "post-survey-results"
       Environment:  
         Variables:
           # VARIABLES PULLED FROM PARAMETER STORE
           TWILIO_ACCOUNT_SID: '{{resolve:ssm:TWILIO_ACCOUNT_SID}}'
           TWILIO_AUTH_TOKEN: '{{resolve:ssm:TWILIO_AUTH_TOKEN}}'          
-          TWILIO_PHONE_NUMBER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'  
-          TWILIO_SMS_SENDER: '{{resolve:ssm:TWILIO_PHONE_NUMBER}}'          
-          DEFAULT_AWS_REGION: 'us-west-2'                    
+          TWILIO_VOICE_NUMBER: '{{resolve:ssm:TWILIO_VOICE_NUMBER}}'  
+          TWILIO_MESSAGING_SENDER: '{{resolve:ssm:TWILIO_MESSAGING_SENDER}}'                                                       
           S3_BUCKET: !Ref SrcBucket
       Layers:   
         - !Ref 'SurveyS3ObjectLayer' 
@@ -682,7 +675,7 @@ Outputs:
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sms/initiate-sms"
   TwilioMessagingWebhook:
     Description: "URL to be configured in Twilio to handle incomming Messages"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sms/initiate-sms"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sms/webhook"
   SrcBucket:
     Description: "S3 Bucket to keep configurations and save data and state."
     Value: !Ref SrcBucket
