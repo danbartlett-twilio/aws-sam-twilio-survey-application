@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Template for Interactive Serverless Applications using Twilio Voice and Messaging Channels ...and also handles multiple languages!
+Description: Build an Interactive Serverless Voice and Messaging Application using Twilio and AWS!
   
 Globals:
   Function:
